@@ -16,7 +16,7 @@ injection = "patch"
 patch = "patches/run_iter_forward_overflow_a24ff69_1.patch"
 source_commit = "a24ff696b6e3cacd13479ab4358bba6f4ad02cdf"
 witnesses = [
-    "witness_iter_matches_model_case_full_bitmap",
+    "witness_iter_matches_model_case_two_full_containers",
 ]
 frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
 files = ["roaring/src/bitmap/store/interval_store.rs"]
@@ -28,31 +28,31 @@ injection = "patch"
 patch = "patches/run_iter_backward_overflow_a24ff69_2.patch"
 source_commit = "a24ff696b6e3cacd13479ab4358bba6f4ad02cdf"
 witnesses = [
-    "witness_iter_matches_model_case_full_bitmap",
+    "witness_iter_matches_model_case_two_full_containers",
 ]
 frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
 files = ["roaring/src/bitmap/store/interval_store.rs"]
 
 [[variant]]
 name = "run_iter_forward_offset_reset_c41bab3_1"
-property = "iter_nth_matches_model"
+property = "iter_matches_model"
 injection = "patch"
 patch = "patches/run_iter_forward_offset_reset_c41bab3_1.patch"
 source_commit = "c41bab3f0eb50b26b25cef4c066608add6c63f01"
 witnesses = [
-    "witness_iter_nth_case_cross_interval",
+    "witness_iter_matches_model_case_two_full_containers",
 ]
 frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
 files = ["roaring/src/bitmap/store/interval_store.rs"]
 
 [[variant]]
 name = "run_iter_backward_offset_reset_c41bab3_2"
-property = "iter_nth_back_matches_model"
+property = "iter_matches_model"
 injection = "patch"
 patch = "patches/run_iter_backward_offset_reset_c41bab3_2.patch"
 source_commit = "c41bab3f0eb50b26b25cef4c066608add6c63f01"
 witnesses = [
-    "witness_iter_nth_back_case_cross_interval",
+    "witness_iter_matches_model_case_two_full_containers",
 ]
 frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
 files = ["roaring/src/bitmap/store/interval_store.rs"]
@@ -112,7 +112,7 @@ injection = "patch"
 patch = "patches/nth_over_u16_max_318366d_1.patch"
 source_commit = "318366d041d958d59bef3e51569ecb452a1ea893"
 witnesses = [
-    "witness_iter_nth_case_cross_interval",
+    "witness_iter_nth_case_nth_over_u16_max",
 ]
 frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
 files = ["roaring/src/bitmap/store/interval_store.rs"]
