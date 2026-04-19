@@ -2,3 +2,4 @@
 /Cargo.lock
 /proptest-regressions
 .hegel/
+.marauders/

@@ -9,18 +9,21 @@
 // (except argv parsing which exits 2).
 
 use crabcheck::quickcheck as crabcheck_qc;
-use hegel::{generators as hgen, Hegel, Settings as HegelSettings, TestCase};
+use crabcheck::quickcheck::Arbitrary as CcArbitrary;
+use hegel::{generators as hgen, HealthCheck, Hegel, Settings as HegelSettings, TestCase};
 use proptest::prelude::*;
-use proptest::test_runner::{Config as ProptestConfig, TestCaseError, TestRunner};
-use quickcheck::{QuickCheck, ResultStatus, TestResult};
+use proptest::test_runner::{Config as ProptestConfig, TestCaseError, TestError, TestRunner};
+use quickcheck::{Arbitrary as QcArbitrary, Gen, QuickCheck, ResultStatus, TestResult};
+use rand::Rng;
 use roaring::etna::{
     property_advance_back_to_matches_model, property_advance_to_matches_model,
     property_iter_matches_model, property_iter_nth_matches_model,
     property_range_cardinality_matches_model, PropertyResult,
 };
+use std::fmt;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 #[derive(Default, Clone, Copy)]
 struct Metrics {
@@ -149,6 +152,143 @@ fn run_etna_property(property: &str) -> Outcome {
     )
 }
 
+// ---------- shared Arbitrary-biased generators (qc + cc) ----------
+//
+// Newtype wrappers around the raw `(Vec<u32>, Vec<(u32, u16)>)` spec. Each
+// wrapper carries two Arbitrary impls:
+//   * `quickcheck::Arbitrary` — used by the quickcheck fork
+//   * `crabcheck::quickcheck::Arbitrary<R>` — used by crabcheck
+// Both mirror the proptest strategies: values 0..200_000, lengths bounded,
+// range-start weighted 40/40/20 on {0, 65_536, uniform 0..200_000}, range-len
+// weighted 50/25/25 on {u16::MAX, 0..=100, 100..=4096}. Debug delegates to
+// the inner type so the counterexample reads as a plain Vec/primitive across
+// frameworks.
+#[derive(Clone)]
+struct Values(Vec<u32>);
+
+#[derive(Clone)]
+struct Ranges(Vec<(u32, u16)>);
+
+#[derive(Clone, Copy)]
+struct Pos200K(u32);
+
+impl fmt::Debug for Values {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Display for Values {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Debug for Ranges {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Display for Ranges {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Debug for Pos200K {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl fmt::Display for Pos200K {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl QcArbitrary for Values {
+    fn arbitrary(g: &mut Gen) -> Self {
+        let len = g.random_range(0usize..=16_384);
+        let vs = (0..len).map(|_| g.random_range(0u32..200_000)).collect();
+        Values(vs)
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(self.0.shrink().map(Values))
+    }
+}
+
+impl QcArbitrary for Ranges {
+    fn arbitrary(g: &mut Gen) -> Self {
+        let len = g.random_range(0usize..=4);
+        let rs = (0..len)
+            .map(|_| {
+                let start = match g.random_range(0u8..5) {
+                    0 | 1 => 0u32,
+                    2 | 3 => 65_536u32,
+                    _ => g.random_range(0u32..200_000),
+                };
+                let len = match g.random_range(0u8..4) {
+                    0 | 1 => u16::MAX,
+                    2 => g.random_range(0u16..=100),
+                    _ => g.random_range(100u16..=4096),
+                };
+                (start, len)
+            })
+            .collect();
+        Ranges(rs)
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(self.0.shrink().map(Ranges))
+    }
+}
+
+impl QcArbitrary for Pos200K {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Pos200K(g.random_range(0u32..200_000))
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(self.0.shrink().map(Pos200K))
+    }
+}
+
+impl<R: Rng> CcArbitrary<R> for Values {
+    fn generate(rng: &mut R, _n: usize) -> Self {
+        let len = rng.random_range(0usize..=16_384);
+        let vs = (0..len).map(|_| rng.random_range(0u32..200_000)).collect();
+        Values(vs)
+    }
+}
+
+impl<R: Rng> CcArbitrary<R> for Ranges {
+    fn generate(rng: &mut R, _n: usize) -> Self {
+        let len = rng.random_range(0usize..=4);
+        let rs = (0..len)
+            .map(|_| {
+                let start = match rng.random_range(0u8..5) {
+                    0 | 1 => 0u32,
+                    2 | 3 => 65_536u32,
+                    _ => rng.random_range(0u32..200_000),
+                };
+                let len = match rng.random_range(0u8..4) {
+                    0 | 1 => u16::MAX,
+                    2 => rng.random_range(0u16..=100),
+                    _ => rng.random_range(100u16..=4096),
+                };
+                (start, len)
+            })
+            .collect();
+        Ranges(rs)
+    }
+}
+
+impl<R: Rng> CcArbitrary<R> for Pos200K {
+    fn generate(rng: &mut R, _n: usize) -> Self {
+        Pos200K(rng.random_range(0u32..200_000))
+    }
+}
+
 // ---------- proptest ----------
 
 // Proptest strategies biased to frequently hit bug-triggering patterns:
@@ -195,7 +335,7 @@ fn run_proptest_property(property: &str) -> Outcome {
     let counter = Arc::new(AtomicU64::new(0));
     let t0 = Instant::now();
     let cfg = ProptestConfig {
-        cases: 64,
+        cases: 40_000_000,
         max_shrink_iters: 32,
         ..ProptestConfig::default()
     };
@@ -205,12 +345,17 @@ fn run_proptest_property(property: &str) -> Outcome {
         "IterMatchesModel" => runner
             .run(&(values_strategy(), ranges_strategy()), move |(vs, rs)| {
                 c.fetch_add(1, Ordering::Relaxed);
-                match property_iter_matches_model(vs, rs) {
-                    PropertyResult::Pass | PropertyResult::Discard => Ok(()),
-                    PropertyResult::Fail(m) => Err(TestCaseError::fail(m)),
+                let vs_cex = vs.clone();
+                let rs_cex = rs.clone();
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                    property_iter_matches_model(vs, rs)
+                ));
+                match outcome {
+                    Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => Ok(()),
+                    Ok(PropertyResult::Fail(_)) | Err(_) => Err(TestCaseError::fail(format!("({:?} {:?})", vs_cex, rs_cex))),
                 }
             })
-            .map_err(|e| e.to_string()),
+            .map_err(|e| match e { TestError::Fail(reason, _) => reason.to_string(), other => other.to_string() }),
         "AdvanceToMatchesModel" => runner
             .run(
                 &(
@@ -221,13 +366,18 @@ fn run_proptest_property(property: &str) -> Outcome {
                 ),
                 move |(vs, rs, back, target)| {
                     c.fetch_add(1, Ordering::Relaxed);
-                    match property_advance_to_matches_model(vs, rs, back, target) {
-                        PropertyResult::Pass | PropertyResult::Discard => Ok(()),
-                        PropertyResult::Fail(m) => Err(TestCaseError::fail(m)),
+                    let vs_cex = vs.clone();
+                    let rs_cex = rs.clone();
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                        property_advance_to_matches_model(vs, rs, back, target)
+                    ));
+                    match outcome {
+                        Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => Ok(()),
+                        Ok(PropertyResult::Fail(_)) | Err(_) => Err(TestCaseError::fail(format!("({:?} {:?} {} {})", vs_cex, rs_cex, back, target))),
                     }
                 },
             )
-            .map_err(|e| e.to_string()),
+            .map_err(|e| match e { TestError::Fail(reason, _) => reason.to_string(), other => other.to_string() }),
         "AdvanceBackToMatchesModel" => runner
             .run(
                 &(
@@ -238,13 +388,18 @@ fn run_proptest_property(property: &str) -> Outcome {
                 ),
                 move |(vs, rs, forward, target)| {
                     c.fetch_add(1, Ordering::Relaxed);
-                    match property_advance_back_to_matches_model(vs, rs, forward, target) {
-                        PropertyResult::Pass | PropertyResult::Discard => Ok(()),
-                        PropertyResult::Fail(m) => Err(TestCaseError::fail(m)),
+                    let vs_cex = vs.clone();
+                    let rs_cex = rs.clone();
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                        property_advance_back_to_matches_model(vs, rs, forward, target)
+                    ));
+                    match outcome {
+                        Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => Ok(()),
+                        Ok(PropertyResult::Fail(_)) | Err(_) => Err(TestCaseError::fail(format!("({:?} {:?} {} {})", vs_cex, rs_cex, forward, target))),
                     }
                 },
             )
-            .map_err(|e| e.to_string()),
+            .map_err(|e| match e { TestError::Fail(reason, _) => reason.to_string(), other => other.to_string() }),
         "IterNthMatchesModel" => runner
             .run(
                 // back_target is biased toward u16::MAX because the
@@ -261,13 +416,18 @@ fn run_proptest_property(property: &str) -> Outcome {
                 move |(back, n)| {
                     c.fetch_add(1, Ordering::Relaxed);
                     let (vs, rs) = single_full_container_spec();
-                    match property_iter_nth_matches_model(vs, rs, back, n) {
-                        PropertyResult::Pass | PropertyResult::Discard => Ok(()),
-                        PropertyResult::Fail(m) => Err(TestCaseError::fail(m)),
+                    let vs_cex = vs.clone();
+                    let rs_cex = rs.clone();
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                        property_iter_nth_matches_model(vs, rs, back, n)
+                    ));
+                    match outcome {
+                        Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => Ok(()),
+                        Ok(PropertyResult::Fail(_)) | Err(_) => Err(TestCaseError::fail(format!("({:?} {:?} {} {})", vs_cex, rs_cex, back, n))),
                     }
                 },
             )
-            .map_err(|e| e.to_string()),
+            .map_err(|e| match e { TestError::Fail(reason, _) => reason.to_string(), other => other.to_string() }),
         "RangeCardinalityMatchesModel" => runner
             .run(
                 &(
@@ -279,13 +439,18 @@ fn run_proptest_property(property: &str) -> Outcome {
                 move |(vs, rs, start, end)| {
                     c.fetch_add(1, Ordering::Relaxed);
                     let (lo, hi) = if start <= end { (start, end) } else { (end, start) };
-                    match property_range_cardinality_matches_model(vs, rs, lo, hi) {
-                        PropertyResult::Pass | PropertyResult::Discard => Ok(()),
-                        PropertyResult::Fail(m) => Err(TestCaseError::fail(m)),
+                    let vs_cex = vs.clone();
+                    let rs_cex = rs.clone();
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                        property_range_cardinality_matches_model(vs, rs, lo, hi)
+                    ));
+                    match outcome {
+                        Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => Ok(()),
+                        Ok(PropertyResult::Fail(_)) | Err(_) => Err(TestCaseError::fail(format!("({:?} {:?} {} {})", vs_cex, rs_cex, lo, hi))),
                     }
                 },
             )
-            .map_err(|e| e.to_string()),
+            .map_err(|e| match e { TestError::Fail(reason, _) => reason.to_string(), other => other.to_string() }),
         _ => {
             return (
                 Err(format!("Unknown property for proptest: {property}")),
@@ -300,29 +465,14 @@ fn run_proptest_property(property: &str) -> Outcome {
 
 // ---------- quickcheck (forked crate with `etna` feature) ----------
 //
-// Seeded deterministic recipe derived from small u16 inputs: quickcheck's
-// shrinker produces more useful counterexamples with small integer fodder than
-// with large vectors that never shrink into run-dense patterns.
+// Arbitrary-driven: property args are the `Values` / `Ranges` newtypes defined
+// above, which bias generation to mirror proptest's strategies. IterNth uses a
+// fixed single-full-container spec and only varies back/n.
 
 static QC_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-fn qc_spec(n_seed: u16, r_seed: u16) -> (Vec<u32>, Vec<(u32, u16)>) {
-    let n = (n_seed as usize) % 400;
-    let values: Vec<u32> = (0..n).map(|i| ((i as u32) * 131) % 200_000).collect();
-    let rn = (r_seed as usize) % 8;
-    let ranges: Vec<(u32, u16)> = (0..rn)
-        .map(|i| {
-            let s = ((r_seed as u32).wrapping_add(i as u32 * 4099)) % 200_000;
-            let l = ((r_seed as u32).wrapping_mul(i as u32 + 7)) % 4096;
-            (s, l as u16)
-        })
-        .collect();
-    (values, ranges)
-}
-
-fn qc_iter_matches_model(n: u16, r: u16) -> TestResult {
+fn qc_iter_matches_model(Values(vs): Values, Ranges(rs): Ranges) -> TestResult {
     QC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = qc_spec(n, r);
     match property_iter_matches_model(vs, rs) {
         PropertyResult::Pass => TestResult::passed(),
         PropertyResult::Discard => TestResult::discard(),
@@ -330,11 +480,13 @@ fn qc_iter_matches_model(n: u16, r: u16) -> TestResult {
     }
 }
 
-fn qc_advance_to_matches_model(n: u16, r: u16, b: u16, t: u16) -> TestResult {
+fn qc_advance_to_matches_model(
+    Values(vs): Values,
+    Ranges(rs): Ranges,
+    Pos200K(back): Pos200K,
+    Pos200K(target): Pos200K,
+) -> TestResult {
     QC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = qc_spec(n, r);
-    let back = (b as u32) * 3;
-    let target = (t as u32) * 3;
     match property_advance_to_matches_model(vs, rs, back, target) {
         PropertyResult::Pass => TestResult::passed(),
         PropertyResult::Discard => TestResult::discard(),
@@ -342,11 +494,13 @@ fn qc_advance_to_matches_model(n: u16, r: u16, b: u16, t: u16) -> TestResult {
     }
 }
 
-fn qc_advance_back_to_matches_model(n: u16, r: u16, f: u16, t: u16) -> TestResult {
+fn qc_advance_back_to_matches_model(
+    Values(vs): Values,
+    Ranges(rs): Ranges,
+    Pos200K(forward): Pos200K,
+    Pos200K(target): Pos200K,
+) -> TestResult {
     QC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = qc_spec(n, r);
-    let forward = (f as u32) * 3;
-    let target = (t as u32) * 3;
     match property_advance_back_to_matches_model(vs, rs, forward, target) {
         PropertyResult::Pass => TestResult::passed(),
         PropertyResult::Discard => TestResult::discard(),
@@ -369,11 +523,15 @@ fn qc_iter_nth_matches_model(back_seed: u16, n_extra: u16) -> TestResult {
     }
 }
 
-fn qc_range_cardinality_matches_model(n: u16, r: u16, s: u16, e: u16) -> TestResult {
+fn qc_range_cardinality_matches_model(
+    Values(vs): Values,
+    Ranges(rs): Ranges,
+    Pos200K(s): Pos200K,
+    Pos200K(e): Pos200K,
+) -> TestResult {
     QC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = qc_spec(n, r);
     let (lo, hi) = if s <= e { (s, e) } else { (e, s) };
-    match property_range_cardinality_matches_model(vs, rs, lo as u32, hi as u32) {
+    match property_range_cardinality_matches_model(vs, rs, lo, hi) {
         PropertyResult::Pass => TestResult::passed(),
         PropertyResult::Discard => TestResult::discard(),
         PropertyResult::Fail(_) => TestResult::failed(),
@@ -386,20 +544,26 @@ fn run_quickcheck_property(property: &str) -> Outcome {
     }
     QC_COUNTER.store(0, Ordering::Relaxed);
     let t0 = Instant::now();
-    let mut qc = QuickCheck::new().tests(64).max_tests(256);
+    let mut qc = QuickCheck::new()
+        .tests(40_000_000)
+        .max_tests(80_000_000)
+        .max_time(Duration::from_secs(86_400));
     let result = match property {
-        "IterMatchesModel" => qc.quicktest(qc_iter_matches_model as fn(u16, u16) -> TestResult),
-        "AdvanceToMatchesModel" => {
-            qc.quicktest(qc_advance_to_matches_model as fn(u16, u16, u16, u16) -> TestResult)
+        "IterMatchesModel" => {
+            qc.quicktest(qc_iter_matches_model as fn(Values, Ranges) -> TestResult)
         }
-        "AdvanceBackToMatchesModel" => {
-            qc.quicktest(qc_advance_back_to_matches_model as fn(u16, u16, u16, u16) -> TestResult)
-        }
+        "AdvanceToMatchesModel" => qc.quicktest(
+            qc_advance_to_matches_model as fn(Values, Ranges, Pos200K, Pos200K) -> TestResult,
+        ),
+        "AdvanceBackToMatchesModel" => qc.quicktest(
+            qc_advance_back_to_matches_model as fn(Values, Ranges, Pos200K, Pos200K) -> TestResult,
+        ),
         "IterNthMatchesModel" => {
             qc.quicktest(qc_iter_nth_matches_model as fn(u16, u16) -> TestResult)
         }
-        "RangeCardinalityMatchesModel" => qc
-            .quicktest(qc_range_cardinality_matches_model as fn(u16, u16, u16, u16) -> TestResult),
+        "RangeCardinalityMatchesModel" => qc.quicktest(
+            qc_range_cardinality_matches_model as fn(Values, Ranges, Pos200K, Pos200K) -> TestResult,
+        ),
         _ => {
             return (
                 Err(format!("Unknown property for quickcheck: {property}")),
@@ -412,7 +576,7 @@ fn run_quickcheck_property(property: &str) -> Outcome {
     let status = match result.status {
         ResultStatus::Finished => Ok(()),
         ResultStatus::Failed { arguments } => Err(format!(
-            "quickcheck counterexample: ({})",
+            "({})",
             arguments.join(" ")
         )),
         ResultStatus::Aborted { err } => Err(format!("quickcheck aborted: {err:?}")),
@@ -426,16 +590,15 @@ fn run_quickcheck_property(property: &str) -> Outcome {
 }
 
 // ---------- crabcheck ----------
+//
+// Arbitrary-driven via the shared `Values`/`Ranges`/`Pos200K` wrappers defined
+// above, which mirror proptest's biased strategies. IterNth uses a fixed
+// single-full-container spec and only varies back/n (u16-sized inputs).
 
 static CC_COUNTER: AtomicU64 = AtomicU64::new(0);
 
-fn cc_spec(n_seed: usize, r_seed: usize) -> (Vec<u32>, Vec<(u32, u16)>) {
-    qc_spec((n_seed & 0xFFFF) as u16, (r_seed & 0xFFFF) as u16)
-}
-
-fn cc_iter_matches_model((n, r): (usize, usize)) -> Option<bool> {
+fn cc_iter_matches_model((Values(vs), Ranges(rs)): (Values, Ranges)) -> Option<bool> {
     CC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = cc_spec(n, r);
     match property_iter_matches_model(vs, rs) {
         PropertyResult::Pass => Some(true),
         PropertyResult::Fail(_) => Some(false),
@@ -443,11 +606,10 @@ fn cc_iter_matches_model((n, r): (usize, usize)) -> Option<bool> {
     }
 }
 
-fn cc_advance_to_matches_model((n, r, b, t): (usize, usize, usize, usize)) -> Option<bool> {
+fn cc_advance_to_matches_model(
+    (Values(vs), Ranges(rs), Pos200K(back), Pos200K(target)): (Values, Ranges, Pos200K, Pos200K),
+) -> Option<bool> {
     CC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = cc_spec(n, r);
-    let back = ((b & 0xFFFF) as u32) * 3;
-    let target = ((t & 0xFFFF) as u32) * 3;
     match property_advance_to_matches_model(vs, rs, back, target) {
         PropertyResult::Pass => Some(true),
         PropertyResult::Fail(_) => Some(false),
@@ -455,11 +617,10 @@ fn cc_advance_to_matches_model((n, r, b, t): (usize, usize, usize, usize)) -> Op
     }
 }
 
-fn cc_advance_back_to_matches_model((n, r, f, t): (usize, usize, usize, usize)) -> Option<bool> {
+fn cc_advance_back_to_matches_model(
+    (Values(vs), Ranges(rs), Pos200K(forward), Pos200K(target)): (Values, Ranges, Pos200K, Pos200K),
+) -> Option<bool> {
     CC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = cc_spec(n, r);
-    let forward = ((f & 0xFFFF) as u32) * 3;
-    let target = ((t & 0xFFFF) as u32) * 3;
     match property_advance_back_to_matches_model(vs, rs, forward, target) {
         PropertyResult::Pass => Some(true),
         PropertyResult::Fail(_) => Some(false),
@@ -480,12 +641,9 @@ fn cc_iter_nth_matches_model((back_seed, n_extra): (usize, usize)) -> Option<boo
 }
 
 fn cc_range_cardinality_matches_model(
-    (n, r, s, e): (usize, usize, usize, usize),
+    (Values(vs), Ranges(rs), Pos200K(s), Pos200K(e)): (Values, Ranges, Pos200K, Pos200K),
 ) -> Option<bool> {
     CC_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let (vs, rs) = cc_spec(n, r);
-    let s = (s & 0xFFFF) as u32;
-    let e = (e & 0xFFFF) as u32;
     let (lo, hi) = if s <= e { (s, e) } else { (e, s) };
     match property_range_cardinality_matches_model(vs, rs, lo, hi) {
         PropertyResult::Pass => Some(true),
@@ -500,13 +658,14 @@ fn run_crabcheck_property(property: &str) -> Outcome {
     }
     CC_COUNTER.store(0, Ordering::Relaxed);
     let t0 = Instant::now();
+    let cc_config = crabcheck_qc::Config { tests: 40_000_000 };
     let result = match property {
-        "IterMatchesModel" => crabcheck_qc::quickcheck(cc_iter_matches_model),
-        "AdvanceToMatchesModel" => crabcheck_qc::quickcheck(cc_advance_to_matches_model),
-        "AdvanceBackToMatchesModel" => crabcheck_qc::quickcheck(cc_advance_back_to_matches_model),
-        "IterNthMatchesModel" => crabcheck_qc::quickcheck(cc_iter_nth_matches_model),
+        "IterMatchesModel" => crabcheck_qc::quickcheck_with_config(cc_config, cc_iter_matches_model),
+        "AdvanceToMatchesModel" => crabcheck_qc::quickcheck_with_config(cc_config, cc_advance_to_matches_model),
+        "AdvanceBackToMatchesModel" => crabcheck_qc::quickcheck_with_config(cc_config, cc_advance_back_to_matches_model),
+        "IterNthMatchesModel" => crabcheck_qc::quickcheck_with_config(cc_config, cc_iter_nth_matches_model),
         "RangeCardinalityMatchesModel" => {
-            crabcheck_qc::quickcheck(cc_range_cardinality_matches_model)
+            crabcheck_qc::quickcheck_with_config(cc_config, cc_range_cardinality_matches_model)
         }
         _ => {
             return (
@@ -519,10 +678,9 @@ fn run_crabcheck_property(property: &str) -> Outcome {
     let inputs = CC_COUNTER.load(Ordering::Relaxed);
     let status = match result.status {
         crabcheck_qc::ResultStatus::Finished => Ok(()),
-        crabcheck_qc::ResultStatus::Failed { arguments } => Err(format!(
-            "crabcheck counterexample: ({})",
-            arguments.join(" ")
-        )),
+        crabcheck_qc::ResultStatus::Failed { arguments } => {
+            Err(format!("({})", arguments.join(" ")))
+        },
         crabcheck_qc::ResultStatus::TimedOut => Err("crabcheck timed out".to_string()),
         crabcheck_qc::ResultStatus::GaveUp => Err(format!(
             "crabcheck gave up: passed={}, discarded={}",
@@ -540,21 +698,54 @@ fn run_crabcheck_property(property: &str) -> Outcome {
 static HG_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn hegel_settings() -> HegelSettings {
-    HegelSettings::new().test_cases(32).seed(Some(0xF100_A7))
+    HegelSettings::new()
+        .test_cases(40_000_000)
+        .suppress_health_check(HealthCheck::all())
+}
+
+// Hegel draw helpers — mirror the proptest strategies (see
+// `values_strategy`, `range_start`, `range_len`, `ranges_strategy`).
+// Weights are simulated by drawing a tag integer and matching: hegel's
+// `one_of!` is uniform, so the tag-match pattern is the standard way.
+
+fn hg_draw_pos(tc: &TestCase) -> u32 {
+    tc.draw(
+        hgen::integers::<u32>()
+            .min_value(0)
+            .max_value(199_999),
+    )
+}
+
+fn hg_draw_range_start(tc: &TestCase) -> u32 {
+    // proptest weights: 2/2/1 on {0, 65_536, uniform 0..200_000}.
+    let tag = tc.draw(hgen::integers::<u8>().min_value(0).max_value(4));
+    match tag {
+        0 | 1 => 0u32,
+        2 | 3 => 65_536u32,
+        _ => hg_draw_pos(tc),
+    }
+}
+
+fn hg_draw_range_len(tc: &TestCase) -> u16 {
+    // proptest weights: 2/1/1 on {u16::MAX, 0..=100, 100..=4096}.
+    let tag = tc.draw(hgen::integers::<u8>().min_value(0).max_value(3));
+    match tag {
+        0 | 1 => u16::MAX,
+        2 => tc.draw(hgen::integers::<u16>().min_value(0).max_value(100)),
+        _ => tc.draw(hgen::integers::<u16>().min_value(100).max_value(4096)),
+    }
 }
 
 fn hg_draw_spec(tc: &TestCase) -> (Vec<u32>, Vec<(u32, u16)>) {
-    let vlen = (tc.draw(hgen::integers::<u16>()) as usize) % 300;
-    let values: Vec<u32> = (0..vlen)
-        .map(|_| tc.draw(hgen::integers::<u32>()) % 200_000)
-        .collect();
-    let rlen = (tc.draw(hgen::integers::<u16>()) as usize) % 8;
+    let vlen = tc.draw(
+        hgen::integers::<usize>()
+            .min_value(0)
+            .max_value(16_384),
+    );
+    let values: Vec<u32> = (0..vlen).map(|_| hg_draw_pos(tc)).collect();
+    let rlen = tc.draw(hgen::integers::<usize>().min_value(0).max_value(4));
     let ranges: Vec<(u32, u16)> = (0..rlen)
-        .map(|_| {
-            let s = tc.draw(hgen::integers::<u32>()) % 200_000;
-            let l = (tc.draw(hgen::integers::<u16>()) as u16) % 4096;
-            (s, l)
-        })
+        .map(|_| (hg_draw_range_start(tc), hg_draw_range_len(tc)))
         .collect();
     (values, ranges)
 }
@@ -571,8 +762,14 @@ fn run_hegel_property(property: &str) -> Outcome {
             Hegel::new(|tc: TestCase| {
                 HG_COUNTER.fetch_add(1, Ordering::Relaxed);
                 let (vs, rs) = hg_draw_spec(&tc);
-                if let PropertyResult::Fail(m) = property_iter_matches_model(vs, rs) {
-                    panic!("{}", m);
+                let vs_cex = vs.clone();
+                let rs_cex = rs.clone();
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
+                    property_iter_matches_model(vs, rs)
+                ));
+                match outcome {
+                    Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => {}
+                    Ok(PropertyResult::Fail(_)) | Err(_) => panic!("({:?} {:?})", vs_cex, rs_cex),
                 }
             })
             .settings(settings.clone())
@@ -582,12 +779,16 @@ fn run_hegel_property(property: &str) -> Outcome {
             Hegel::new(|tc: TestCase| {
                 HG_COUNTER.fetch_add(1, Ordering::Relaxed);
                 let (vs, rs) = hg_draw_spec(&tc);
-                let b = tc.draw(hgen::integers::<u32>()) % 200_000;
-                let t = tc.draw(hgen::integers::<u32>()) % 200_000;
-                if let PropertyResult::Fail(m) =
+                let b = hg_draw_pos(&tc);
+                let t = hg_draw_pos(&tc);
+                let vs_cex = vs.clone();
+                let rs_cex = rs.clone();
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                     property_advance_to_matches_model(vs, rs, b, t)
-                {
-                    panic!("{}", m);
+                ));
+                match outcome {
+                    Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => {}
+                    Ok(PropertyResult::Fail(_)) | Err(_) => panic!("({:?} {:?} {} {})", vs_cex, rs_cex, b, t),
                 }
             })
             .settings(settings.clone())
@@ -597,12 +798,16 @@ fn run_hegel_property(property: &str) -> Outcome {
             Hegel::new(|tc: TestCase| {
                 HG_COUNTER.fetch_add(1, Ordering::Relaxed);
                 let (vs, rs) = hg_draw_spec(&tc);
-                let f = tc.draw(hgen::integers::<u32>()) % 200_000;
-                let t = tc.draw(hgen::integers::<u32>()) % 200_000;
-                if let PropertyResult::Fail(m) =
+                let f = hg_draw_pos(&tc);
+                let t = hg_draw_pos(&tc);
+                let vs_cex = vs.clone();
+                let rs_cex = rs.clone();
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                     property_advance_back_to_matches_model(vs, rs, f, t)
-                {
-                    panic!("{}", m);
+                ));
+                match outcome {
+                    Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => {}
+                    Ok(PropertyResult::Fail(_)) | Err(_) => panic!("({:?} {:?} {} {})", vs_cex, rs_cex, f, t),
                 }
             })
             .settings(settings.clone())
@@ -614,10 +819,14 @@ fn run_hegel_property(property: &str) -> Outcome {
                 let (vs, rs) = single_full_container_spec();
                 let back = tc.draw(hgen::integers::<u16>()) as u32;
                 let n = 65_536u32 + tc.draw(hgen::integers::<u16>()) as u32;
-                if let PropertyResult::Fail(m) =
+                let vs_cex = vs.clone();
+                let rs_cex = rs.clone();
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                     property_iter_nth_matches_model(vs, rs, back, n)
-                {
-                    panic!("{}", m);
+                ));
+                match outcome {
+                    Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => {}
+                    Ok(PropertyResult::Fail(_)) | Err(_) => panic!("({:?} {:?} {} {})", vs_cex, rs_cex, back, n),
                 }
             })
             .settings(settings.clone())
@@ -627,13 +836,17 @@ fn run_hegel_property(property: &str) -> Outcome {
             Hegel::new(|tc: TestCase| {
                 HG_COUNTER.fetch_add(1, Ordering::Relaxed);
                 let (vs, rs) = hg_draw_spec(&tc);
-                let s = tc.draw(hgen::integers::<u32>()) % 200_000;
-                let e = tc.draw(hgen::integers::<u32>()) % 200_000;
+                let s = hg_draw_pos(&tc);
+                let e = hg_draw_pos(&tc);
                 let (lo, hi) = if s <= e { (s, e) } else { (e, s) };
-                if let PropertyResult::Fail(m) =
+                let vs_cex = vs.clone();
+                let rs_cex = rs.clone();
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(||
                     property_range_cardinality_matches_model(vs, rs, lo, hi)
-                {
-                    panic!("{}", m);
+                ));
+                match outcome {
+                    Ok(PropertyResult::Pass) | Ok(PropertyResult::Discard) => {}
+                    Ok(PropertyResult::Fail(_)) | Err(_) => panic!("({:?} {:?} {} {})", vs_cex, rs_cex, lo, hi),
                 }
             })
             .settings(settings.clone())
@@ -660,7 +873,7 @@ fn run_hegel_property(property: &str) -> Outcome {
                     Metrics::default(),
                 );
             }
-            Err(format!("hegel found counterexample: {msg}"))
+            Err(msg.strip_prefix("Property test failed: ").unwrap_or(&msg).to_string())
         }
     };
     (status, metrics)
