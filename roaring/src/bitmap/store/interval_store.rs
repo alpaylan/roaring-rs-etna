@@ -676,7 +676,6 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
         if let Some(value) = self.backward_offset.checked_add(1) {
             self.backward_offset = value;
         } else {
-            self.intervals.next_back();
             self.backward_offset = 0;
             return;
         }
