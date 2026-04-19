@@ -784,10 +784,6 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             }
             Err(index) => {
                 if index == 0 {
-                    // Consume the whole iterator
-                    self.intervals.nth_back(self.intervals.as_slice().len());
-                    self.forward_offset = 0;
-                    self.backward_offset = 0;
                     return;
                 }
                 let backward_index = self.intervals.as_slice().len() - index;
