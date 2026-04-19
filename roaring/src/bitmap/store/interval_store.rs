@@ -677,7 +677,6 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
             self.backward_offset = value;
         } else {
             self.intervals.next_back();
-            self.backward_offset = 0;
             return;
         }
         let only_interval = self.intervals.as_slice().len() == 1;
