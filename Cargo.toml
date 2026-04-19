@@ -20,3 +20,8 @@ zip = { version = "0.6", default-features = false }
 
 [profile.test]
 opt-level = 2
+
+# ETNA: keep debug assertions on in release so internal invariants panic
+# (several variants manifest only via `debug_assert!`).
+[profile.release]
+debug-assertions = true

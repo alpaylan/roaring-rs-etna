@@ -30,6 +30,11 @@ pub mod bitmap;
 /// A compressed bitmap with u64 values.  Implemented as a `BTreeMap` of `RoaringBitmap`s.
 pub mod treemap;
 
+/// ETNA framework-neutral property functions used by the `etna` binary and
+/// the deterministic witness tests.
+#[cfg(feature = "std")]
+pub mod etna;
+
 pub use bitmap::RoaringBitmap;
 pub use treemap::RoaringTreemap;
 

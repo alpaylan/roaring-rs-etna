@@ -1,0 +1,17 @@
+diff --git a/roaring/src/bitmap/store/bitmap_store.rs b/roaring/src/bitmap/store/bitmap_store.rs
+index ca32e2b..588e4c2 100644
+--- a/roaring/src/bitmap/store/bitmap_store.rs
++++ b/roaring/src/bitmap/store/bitmap_store.rs
+@@ -552,11 +552,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
+                 } else if cmp == Ordering::Equal {
+                     (self.value, &mut self.value)
+                 } else {
+-                    // New key is less than original key and key_back, this iterator is now empty
+-                    self.key_back = self.key;
+-                    self.value = 0;
+-                    self.value_back = 0;
+-                    return;
++                    (0, &mut self.value)
+                 }
+             }
+         };

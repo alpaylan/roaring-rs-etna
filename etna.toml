@@ -1,0 +1,118 @@
+# ETNA workload index for roaring-rs.
+#
+# One [[variant]] per injected mutation. Source of truth for variant->property
+# mapping. Every other fact is derivable from the source tree:
+#   - ls patches/*.patch                              (patch-based variants)
+#   - grep -rn "pub fn property_" roaring/src/etna.rs (property functions)
+#   - grep -rn "fn witness_.*_case_" roaring/tests/   (witness tests)
+#
+# Base commit for this workload is HEAD of master on this tree. Every
+# etna/<variant> branch is master + exactly one patch applied on top.
+
+[[variant]]
+name = "run_iter_forward_overflow_a24ff69_1"
+property = "iter_matches_model"
+injection = "patch"
+patch = "patches/run_iter_forward_overflow_a24ff69_1.patch"
+source_commit = "a24ff696b6e3cacd13479ab4358bba6f4ad02cdf"
+witnesses = [
+    "witness_iter_matches_model_case_full_bitmap",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]
+
+[[variant]]
+name = "run_iter_backward_overflow_a24ff69_2"
+property = "iter_matches_model"
+injection = "patch"
+patch = "patches/run_iter_backward_overflow_a24ff69_2.patch"
+source_commit = "a24ff696b6e3cacd13479ab4358bba6f4ad02cdf"
+witnesses = [
+    "witness_iter_matches_model_case_full_bitmap",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]
+
+[[variant]]
+name = "run_iter_forward_offset_reset_c41bab3_1"
+property = "iter_nth_matches_model"
+injection = "patch"
+patch = "patches/run_iter_forward_offset_reset_c41bab3_1.patch"
+source_commit = "c41bab3f0eb50b26b25cef4c066608add6c63f01"
+witnesses = [
+    "witness_iter_nth_case_cross_interval",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]
+
+[[variant]]
+name = "run_iter_backward_offset_reset_c41bab3_2"
+property = "iter_nth_back_matches_model"
+injection = "patch"
+patch = "patches/run_iter_backward_offset_reset_c41bab3_2.patch"
+source_commit = "c41bab3f0eb50b26b25cef4c066608add6c63f01"
+witnesses = [
+    "witness_iter_nth_back_case_cross_interval",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]
+
+[[variant]]
+name = "bitmap_advance_past_back_eaccd09_1"
+property = "advance_to_matches_model"
+injection = "patch"
+patch = "patches/bitmap_advance_past_back_eaccd09_1.patch"
+source_commit = "eaccd090783fae53124c054b88afa953a31a83af"
+witnesses = [
+    "witness_advance_to_past_end_case_compressed_run",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/bitmap_store.rs"]
+
+[[variant]]
+name = "bitmap_advance_back_to_invariant_136b8f1_1"
+property = "advance_back_to_matches_model"
+injection = "patch"
+patch = "patches/bitmap_advance_back_to_invariant_136b8f1_1.patch"
+source_commit = "136b8f1e7a4807a0662e07646b8a03c1beb7b06d"
+witnesses = [
+    "witness_advance_back_to_before_start_case_compressed_run",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/bitmap_store.rs"]
+
+[[variant]]
+name = "run_iter_advance_to_past_end_3116bcc_1"
+property = "advance_to_matches_model"
+injection = "patch"
+patch = "patches/run_iter_advance_to_past_end_3116bcc_1.patch"
+source_commit = "3116bccab187a639238cd50754935400a433a3c5"
+witnesses = [
+    "witness_advance_to_past_end_case_compressed_run",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]
+
+[[variant]]
+name = "run_iter_advance_back_to_past_start_3116bcc_2"
+property = "advance_back_to_matches_model"
+injection = "patch"
+patch = "patches/run_iter_advance_back_to_past_start_3116bcc_2.patch"
+source_commit = "3116bccab187a639238cd50754935400a433a3c5"
+witnesses = [
+    "witness_advance_back_to_before_start_case_compressed_run",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]
+
+[[variant]]
+name = "nth_over_u16_max_318366d_1"
+property = "iter_nth_matches_model"
+injection = "patch"
+patch = "patches/nth_over_u16_max_318366d_1.patch"
+source_commit = "318366d041d958d59bef3e51569ecb452a1ea893"
+witnesses = [
+    "witness_iter_nth_case_cross_interval",
+]
+frameworks = ["proptest", "quickcheck", "crabcheck", "hegel"]
+files = ["roaring/src/bitmap/store/interval_store.rs"]

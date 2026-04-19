@@ -1,0 +1,12 @@
+diff --git a/roaring/src/bitmap/store/interval_store.rs b/roaring/src/bitmap/store/interval_store.rs
+index 86b2022..0b1dffd 100644
+--- a/roaring/src/bitmap/store/interval_store.rs
++++ b/roaring/src/bitmap/store/interval_store.rs
+@@ -657,7 +657,6 @@ impl<I: SliceIterator<Interval>> RunIter<I> {
+             self.forward_offset = value;
+         } else {
+             self.intervals.next();
+-            self.forward_offset = 0;
+             return;
+         }
+         let only_interval = self.intervals.as_slice().len() == 1;
