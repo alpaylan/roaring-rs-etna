@@ -552,11 +552,7 @@ impl<B: Borrow<[u64; BITMAP_LENGTH]>> BitmapIter<B> {
                 } else if cmp == Ordering::Equal {
                     (self.value, &mut self.value)
                 } else {
-                    // New key is less than original key and key_back, this iterator is now empty
-                    self.key_back = self.key;
-                    self.value = 0;
-                    self.value_back = 0;
-                    return;
+                    (0, &mut self.value)
                 }
             }
         };
