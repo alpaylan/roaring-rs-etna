@@ -22,8 +22,8 @@ byteorder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 # ETNA framework dependencies — linked by src/bin/etna.rs.
 proptest = { workspace = true }
-quickcheck = { path = "/Users/akeles/Programming/projects/PbtBenchmark/quickcheck", features = ["etna"] }
-crabcheck = { path = "/Users/akeles/Programming/projects/PbtBenchmark/crabcheck" }
+quickcheck = { git = "https://github.com/alpaylan/quickcheck.git", branch = "master", features = ["etna"] }
+crabcheck = { git = "https://github.com/alpaylan/crabcheck.git", branch = "main" }
 hegeltest = "0.3.7"
 rand = "0.9"
 
