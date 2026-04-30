@@ -1,5 +1,6 @@
 name = "roaring-rs"
 language = "rust"
+strategies = ["proptest", "quickcheck", "crabcheck", "hegel"]
 base_commit = "01ebbd16a9293c5ee724380f601696711558b9d9"
 
 [[tasks]]
