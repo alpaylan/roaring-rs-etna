@@ -128,7 +128,7 @@ how_triggered = "The fix sets `self.key = self.key_back` and `self.value = 0` wh
 [[tasks.tasks]]
 property = "AdvanceToMatchesModel"
 witnesses = [
-  { test_fn = "witness_advance_to_past_end_case_compressed_run" },
+  { test_fn = "witness_advance_to_past_end_case_compressed_run_bitmapiter" },
 ]
 
 [[tasks]]
@@ -154,7 +154,7 @@ how_triggered = "The fix returns early with a fully-reset state when `new_key < 
 [[tasks.tasks]]
 property = "AdvanceBackToMatchesModel"
 witnesses = [
-  { test_fn = "witness_advance_back_to_before_start_case_compressed_run" },
+  { test_fn = "witness_advance_back_to_before_start_case_compressed_run_bitmapiter" },
 ]
 
 [[tasks]]
@@ -180,7 +180,7 @@ how_triggered = "The fix calls `self.intervals.nth(index)` when `index == len`, 
 [[tasks.tasks]]
 property = "AdvanceToMatchesModel"
 witnesses = [
-  { test_fn = "witness_advance_to_past_end_case_compressed_run" },
+  { test_fn = "witness_advance_to_past_end_case_compressed_run_runiter" },
 ]
 
 [[tasks]]
@@ -205,7 +205,7 @@ how_triggered = "Same omission in the `advance_back_to` Err(index == 0) branch."
 [[tasks.tasks]]
 property = "AdvanceBackToMatchesModel"
 witnesses = [
-  { test_fn = "witness_advance_back_to_before_start_case_compressed_run" },
+  { test_fn = "witness_advance_back_to_before_start_case_compressed_run_runiter" },
 ]
 
 [[tasks]]

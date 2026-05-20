@@ -20,11 +20,11 @@ Total mutations: 9
 
 | Variant | Property | Witness(es) |
 |---------|----------|-------------|
-| `bitmap_advance_back_to_invariant_136b8f1_1` | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| `bitmap_advance_past_back_eaccd09_1` | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
+| `bitmap_advance_back_to_invariant_136b8f1_1` | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_bitmapiter` |
+| `bitmap_advance_past_back_eaccd09_1` | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_bitmapiter` |
 | `nth_over_u16_max_318366d_1` | `IterNthMatchesModel` | `witness_iter_nth_case_nth_over_u16_max` |
-| `run_iter_advance_back_to_past_start_3116bcc_2` | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| `run_iter_advance_to_past_end_3116bcc_1` | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
+| `run_iter_advance_back_to_past_start_3116bcc_2` | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_runiter` |
+| `run_iter_advance_to_past_end_3116bcc_1` | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_runiter` |
 | `run_iter_backward_offset_reset_c41bab3_2` | `IterMatchesModel` | `witness_iter_matches_model_case_two_full_containers` |
 | `run_iter_backward_overflow_a24ff69_2` | `IterMatchesModel` | `witness_iter_matches_model_case_two_full_containers` |
 | `run_iter_forward_offset_reset_c41bab3_1` | `IterMatchesModel` | `witness_iter_matches_model_case_two_full_containers` |
@@ -47,7 +47,7 @@ Total mutations: 9
 - **Location**: `roaring/src/bitmap/store/bitmap_store.rs`
 - **Property**: `AdvanceBackToMatchesModel`
 - **Witness(es)**:
-  - `witness_advance_back_to_before_start_case_compressed_run`
+  - `witness_advance_back_to_before_start_case_compressed_run_bitmapiter`
 - **Source**: fix: bitmap advance_back_to could violate invariants
   > When `BitmapIter::advance_back_to` is called with `new_key < key`, the fix returns early with a fully-reset state. The bug falls through to `(0, &mut self.value)`, writing a 0 into the front word while leaving `key_back > key` — violating the `key_back >= key` invariant and tripping `debug_assert!` on subsequent iteration.
 - **Fix commit**: `136b8f1e7a4807a0662e07646b8a03c1beb7b06d` — fix: bitmap advance_back_to could violate invariants
@@ -60,7 +60,7 @@ Total mutations: 9
 - **Location**: `roaring/src/bitmap/store/bitmap_store.rs`
 - **Property**: `AdvanceToMatchesModel`
 - **Witness(es)**:
-  - `witness_advance_to_past_end_case_compressed_run`
+  - `witness_advance_to_past_end_case_compressed_run_bitmapiter`
 - **Source**: fix: correctly empty bitmap container iter when advancing past the back
   > When `BitmapIter::advance_to` is called with `new_key > key_back`, the iterator should be emptied: the fix resets `self.key = self.key_back` and `self.value = 0`. The bug only clears `value_back`, leaving the front pointer on a stale key so `collect()` replays already-advanced-past values.
 - **Fix commit**: `eaccd090783fae53124c054b88afa953a31a83af` — fix: correctly empty bitmap container iter when advancing past the back
@@ -86,7 +86,7 @@ Total mutations: 9
 - **Location**: `roaring/src/bitmap/store/interval_store.rs`
 - **Property**: `AdvanceBackToMatchesModel`
 - **Witness(es)**:
-  - `witness_advance_back_to_before_start_case_compressed_run`
+  - `witness_advance_back_to_before_start_case_compressed_run_runiter`
 - **Source**: —
   > Symmetric backward-direction fix from the same commit: `RunIter::advance_back_to` past the first element must consume the underlying slice iterator via `intervals.nth_back(...)`, otherwise subsequent `next_back()` calls replay already-advanced-past intervals.
 - **Fix commit**: `3116bccab187a639238cd50754935400a433a3c5`
@@ -99,7 +99,7 @@ Total mutations: 9
 - **Location**: `roaring/src/bitmap/store/interval_store.rs`
 - **Property**: `AdvanceToMatchesModel`
 - **Witness(es)**:
-  - `witness_advance_to_past_end_case_compressed_run`
+  - `witness_advance_to_past_end_case_compressed_run_runiter`
 - **Source**: fix: when advancing past the begin/end of a range container's iter, consume the whole thing
   > `RunIter::advance_to` past the last element must call `self.intervals.nth(index)` to consume the underlying slice iterator; the bug returned without touching it, so the iterator still reported remaining intervals and replayed them on subsequent `next()`.
 - **Fix commit**: `3116bccab187a639238cd50754935400a433a3c5` — fix: when advancing past the begin/end of a range container's iter, consume the whole thing

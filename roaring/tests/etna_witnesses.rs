@@ -68,16 +68,20 @@ fn witness_iter_matches_model_case_two_full_containers() {
     );
 }
 
+// RunIter path: back pointer untouched, advance_to past the last element.
 #[test]
-fn witness_advance_to_past_end_case_compressed_run() {
-    // RunIter path: back pointer untouched, advance_to past the last element.
+fn witness_advance_to_past_end_case_compressed_run_runiter() {
     let (vs, rs) = compressed_run_ranges();
     expect_pass(
         property_advance_to_matches_model(vs, rs, u32::MAX, 0x35B01),
         "advance_to past end of compressed-run RunStore",
     );
-    // BitmapIter path: advance_back_to(100) THEN advance_to(300) on a dense
-    // non-run container — exercises bitmap_advance_past_back_eaccd09.
+}
+
+// BitmapIter path: advance_back_to(100) THEN advance_to(300) on a dense
+// non-run container — exercises bitmap_advance_past_back_eaccd09.
+#[test]
+fn witness_advance_to_past_end_case_compressed_run_bitmapiter() {
     let (vs, rs) = bitmap_store_spec();
     expect_pass(
         property_advance_to_matches_model(vs, rs, 100, 300),
@@ -85,15 +89,19 @@ fn witness_advance_to_past_end_case_compressed_run() {
     );
 }
 
+// RunIter path: advance_back_to before the first element.
 #[test]
-fn witness_advance_back_to_before_start_case_compressed_run() {
-    // RunIter path: advance_back_to before the first element.
+fn witness_advance_back_to_before_start_case_compressed_run_runiter() {
     let (vs, rs) = compressed_run_ranges();
     expect_pass(
         property_advance_back_to_matches_model(vs, rs, 0, 499),
         "advance_back_to before start of compressed-run RunStore",
     );
-    // BitmapIter path: advance_to(300) THEN advance_back_to(100).
+}
+
+// BitmapIter path: advance_to(300) THEN advance_back_to(100).
+#[test]
+fn witness_advance_back_to_before_start_case_compressed_run_bitmapiter() {
     let (vs, rs) = bitmap_store_spec();
     expect_pass(
         property_advance_back_to_matches_model(vs, rs, 300, 100),

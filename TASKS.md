@@ -6,26 +6,26 @@ Total tasks: 36
 
 | Task | Variant | Framework | Property | Witness |
 |------|---------|-----------|----------|---------|
-| 001 | `bitmap_advance_back_to_invariant_136b8f1_1` | proptest | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 002 | `bitmap_advance_back_to_invariant_136b8f1_1` | quickcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 003 | `bitmap_advance_back_to_invariant_136b8f1_1` | crabcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 004 | `bitmap_advance_back_to_invariant_136b8f1_1` | hegel | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 005 | `bitmap_advance_past_back_eaccd09_1` | proptest | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
-| 006 | `bitmap_advance_past_back_eaccd09_1` | quickcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
-| 007 | `bitmap_advance_past_back_eaccd09_1` | crabcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
-| 008 | `bitmap_advance_past_back_eaccd09_1` | hegel | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
+| 001 | `bitmap_advance_back_to_invariant_136b8f1_1` | proptest | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_bitmapiter` |
+| 002 | `bitmap_advance_back_to_invariant_136b8f1_1` | quickcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_bitmapiter` |
+| 003 | `bitmap_advance_back_to_invariant_136b8f1_1` | crabcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_bitmapiter` |
+| 004 | `bitmap_advance_back_to_invariant_136b8f1_1` | hegel | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_bitmapiter` |
+| 005 | `bitmap_advance_past_back_eaccd09_1` | proptest | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_bitmapiter` |
+| 006 | `bitmap_advance_past_back_eaccd09_1` | quickcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_bitmapiter` |
+| 007 | `bitmap_advance_past_back_eaccd09_1` | crabcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_bitmapiter` |
+| 008 | `bitmap_advance_past_back_eaccd09_1` | hegel | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_bitmapiter` |
 | 009 | `nth_over_u16_max_318366d_1` | proptest | `IterNthMatchesModel` | `witness_iter_nth_case_nth_over_u16_max` |
 | 010 | `nth_over_u16_max_318366d_1` | quickcheck | `IterNthMatchesModel` | `witness_iter_nth_case_nth_over_u16_max` |
 | 011 | `nth_over_u16_max_318366d_1` | crabcheck | `IterNthMatchesModel` | `witness_iter_nth_case_nth_over_u16_max` |
 | 012 | `nth_over_u16_max_318366d_1` | hegel | `IterNthMatchesModel` | `witness_iter_nth_case_nth_over_u16_max` |
-| 013 | `run_iter_advance_back_to_past_start_3116bcc_2` | proptest | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 014 | `run_iter_advance_back_to_past_start_3116bcc_2` | quickcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 015 | `run_iter_advance_back_to_past_start_3116bcc_2` | crabcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 016 | `run_iter_advance_back_to_past_start_3116bcc_2` | hegel | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run` |
-| 017 | `run_iter_advance_to_past_end_3116bcc_1` | proptest | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
-| 018 | `run_iter_advance_to_past_end_3116bcc_1` | quickcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
-| 019 | `run_iter_advance_to_past_end_3116bcc_1` | crabcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
-| 020 | `run_iter_advance_to_past_end_3116bcc_1` | hegel | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run` |
+| 013 | `run_iter_advance_back_to_past_start_3116bcc_2` | proptest | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_runiter` |
+| 014 | `run_iter_advance_back_to_past_start_3116bcc_2` | quickcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_runiter` |
+| 015 | `run_iter_advance_back_to_past_start_3116bcc_2` | crabcheck | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_runiter` |
+| 016 | `run_iter_advance_back_to_past_start_3116bcc_2` | hegel | `AdvanceBackToMatchesModel` | `witness_advance_back_to_before_start_case_compressed_run_runiter` |
+| 017 | `run_iter_advance_to_past_end_3116bcc_1` | proptest | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_runiter` |
+| 018 | `run_iter_advance_to_past_end_3116bcc_1` | quickcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_runiter` |
+| 019 | `run_iter_advance_to_past_end_3116bcc_1` | crabcheck | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_runiter` |
+| 020 | `run_iter_advance_to_past_end_3116bcc_1` | hegel | `AdvanceToMatchesModel` | `witness_advance_to_past_end_case_compressed_run_runiter` |
 | 021 | `run_iter_backward_offset_reset_c41bab3_2` | proptest | `IterMatchesModel` | `witness_iter_matches_model_case_two_full_containers` |
 | 022 | `run_iter_backward_offset_reset_c41bab3_2` | quickcheck | `IterMatchesModel` | `witness_iter_matches_model_case_two_full_containers` |
 | 023 | `run_iter_backward_offset_reset_c41bab3_2` | crabcheck | `IterMatchesModel` | `witness_iter_matches_model_case_two_full_containers` |
@@ -45,7 +45,9 @@ Total tasks: 36
 
 ## Witness Catalog
 
-- `witness_advance_back_to_before_start_case_compressed_run` — base passes, variant fails
-- `witness_advance_to_past_end_case_compressed_run` — base passes, variant fails
+- `witness_advance_back_to_before_start_case_compressed_run_bitmapiter` — base passes, variant fails
+- `witness_advance_to_past_end_case_compressed_run_bitmapiter` — base passes, variant fails
 - `witness_iter_nth_case_nth_over_u16_max` — base passes, variant fails
+- `witness_advance_back_to_before_start_case_compressed_run_runiter` — base passes, variant fails
+- `witness_advance_to_past_end_case_compressed_run_runiter` — base passes, variant fails
 - `witness_iter_matches_model_case_two_full_containers` — base passes, variant fails
